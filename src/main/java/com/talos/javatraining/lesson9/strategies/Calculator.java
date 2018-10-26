@@ -2,25 +2,38 @@ package com.talos.javatraining.lesson9.strategies;
 
 import com.talos.javatraining.lesson9.events.EventBus;
 import com.talos.javatraining.lesson9.events.EventType;
-import org.apache.commons.lang3.StringUtils;
+import com.talos.javatraining.lesson9.strategies.impl.CalculatorTemplate;
 
 import javax.inject.Inject;
-import java.util.Map;
-import java.util.Set;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 
 public class Calculator
 {
 	private EventBus eventBus;
-	private Map<String, CalculatorStrategy> strategies;
+	//private Map<String, CalculatorStrategy> strategies;
+	private Function<BigDecimal,String> basicStrategy, scientificStrategy;
+	private  CalculatorStrategy strategy;
 	private String mode = "basic";// default mode
 
 	@Inject
 	public Calculator(EventBus eventBus)
 	{
 		this.eventBus = eventBus;
+
+		basicStrategy = value -> value.setScale(5, RoundingMode.HALF_UP).toString();
+		scientificStrategy = value -> {
+			DecimalFormat formatter = new DecimalFormat("0.00E00");
+			formatter.setRoundingMode(RoundingMode.HALF_UP);
+			formatter.setMinimumFractionDigits(10);
+			return formatter.format(value);
+		};
+
+		//eventBus.register(EventType.ADD, args -> calculate(getStrategy()::add, args));
 		eventBus.register(EventType.ADD, args -> calculate(getStrategy()::add, args));
 		eventBus.register(EventType.SUBTRACT, args -> calculate(getStrategy()::subtract, args));
 		eventBus.register(EventType.MULTIPLY, args -> calculate(getStrategy()::multiply, args));
@@ -30,7 +43,27 @@ public class Calculator
 
 	private CalculatorStrategy getStrategy()
 	{
-		return strategies.get(mode);
+		if (mode.equals("basic"))
+			strategy = new CalculatorTemplate()
+			{
+				@Override
+				protected String convertToString(BigDecimal value)
+				{
+					return basicStrategy.apply(value);
+				}
+			};
+		else
+		if (mode.equals("scientific"))
+			strategy = new CalculatorTemplate()
+			{
+				@Override
+				protected String convertToString(BigDecimal value)
+				{
+					return scientificStrategy.apply(value);
+				}
+			};
+
+		return strategy;
 	}
 
 	private void calculate(BiFunction<String, String, String> operation, String[] args)
@@ -42,7 +75,9 @@ public class Calculator
 	private void changeMode(String[] args)
 	{
 		String tempMode = args[0];
-		if(!strategies.containsKey(tempMode)){
+
+		//if(!strategies.containsKey(tempMode)){
+		if(!tempMode.equals("basic") && !tempMode.equals("scientific")){
 			eventBus.notify(EventType.RESULT, "not supported mode: " + tempMode);
 			return;
 		}
@@ -50,17 +85,17 @@ public class Calculator
 		eventBus.notify(EventType.RESULT, "mode: " + mode);
 	}
 
-	private String getKey(CalculatorStrategy strategy)
+	/*private String getKey(CalculatorStrategy strategy)
 	{
 		String simpleName = strategy.getClass().getSimpleName();
 		return StringUtils.removeEnd(simpleName, "Strategy").toLowerCase();
-	}
+	}*/
 
-	@Inject
+	/*@Inject
 	public void setStrategies(Set<CalculatorStrategy> strategySet)
 	{
 		strategies = strategySet.stream().collect(Collectors.toMap(this::getKey, s -> s));
-	}
+	}*/
 
 
 }
