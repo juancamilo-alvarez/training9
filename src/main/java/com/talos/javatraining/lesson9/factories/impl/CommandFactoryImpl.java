@@ -32,7 +32,7 @@ public class CommandFactoryImpl implements CommandFactory
 		int size = parts.length;
 		if(size == 1 && EXIT.equals(parts[0])){
 			// result = Optional.of(new ExitCommand());
-			result = Optional.of(ExitException::new);
+			result = Optional.of(() -> {throw new ExitException();});
 		} else if (size == 2 && MODE.equals(parts[0]))
 		{
 			//result = Optional.of(new ChangeModeCommand(eventBus, parts[1]));
@@ -55,7 +55,7 @@ public class CommandFactoryImpl implements CommandFactory
 					command = new CommandTemplate(eventBus, EventType.MULTIPLY, parts[0], parts[2]);
 					break;
 				case DIVIDE:
-					command = new CommandTemplate(eventBus, EventType.MULTIPLY, parts[0], parts[2]);
+					command = new CommandTemplate(eventBus, EventType.DIVIDE, parts[0], parts[2]);
 					break;
 			}
 			result = Optional.ofNullable(command);
